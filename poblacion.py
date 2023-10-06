@@ -5,27 +5,38 @@ def plot_array(x):
     plt.plot(x, y, marker='o', linestyle='-', color='b')
     plt.show()
 
-def population_dynamic(r, A, N, K, t):
-    return r * N(t) * (1 - N(t)/K ) * (N(t)/A - 1)
+def population_dynamic(r, A, N, K, t): #w es N, no depende del tiempo
+    return r * N * (1 - N/K ) * (N/A - 1)
 
-def f(t, w):
-    return population_dynamic(0, 0, w, 0, t)
+def f(w):
+    return population_dynamic(1, 1, w, 20, 0)
 
 def getNextR4(previous, f, h):
     k1 = h * f(previous)
     k2 = h * f(previous + (1/2) * k1)
     k3 = h * f(previous + (1/2) * k2)
     k4 = h * f(previous + k3)
-    return previous + (1/6)(k1 + 2*k2 + 2*k3 + k4)
+    return previous + (1/6) * (k1 + 2*k2 + 2*k3 + k4)
 
-def R4(f, h = 1e-6, iterations = 1e6):
+def R4(w0, f, h = 1e-6, iterations = int(1e6)):
     ret = []
-    curr_it = 0
+    curr_it = w0
     for iter in range(iterations):
         curr_it = getNextR4(curr_it, f, h)
         ret.append(curr_it)
     return ret
 
-def eulerMethod(w0, h, f, iterations):
+def eulerMethod(w0, f, h = 1e-6, iterations = int(1e6)):
+    result_list = []
     for i in range(iterations):
-        w0 = w0 + h * 
+        result_list.append(w0)
+        w0 = w0 + h * f(w0)
+    
+    return result_list
+
+def main():
+    plot_array(R4(10, f, 0.1 , 200))
+    plot_array(eulerMethod(10, f, 0.1, 200))
+
+if __name__ == "__main__":
+    main()
