@@ -225,6 +225,8 @@ def T(results, mass, length):
 def E(V_results, T_results):
     return [(V_res[0], V_res[1] + T_res[1]) for V_res, T_res in zip(V_results, T_results)]
 
+def T_for_gt(results, mass, length)
+
 
 # V y T
 
