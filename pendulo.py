@@ -2,6 +2,8 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 
+ITER = 2000
+
 def r(angle, l, t):
     return (l * math.sin(angle(t)), -l * math.cos(angle(t)))
 
@@ -48,15 +50,15 @@ def plot_pendulum_motion(results, V_results, T_results, E_results):
     _, E_vals = zip(*E_results)
     ax[1, 1].plot(times, E_vals, color='purple')
     ax[1, 1].set_xlabel('Time')
-    ax[1, 1].set_ylabel('Total Mechanical Energy (J)')
-    ax[1, 1].set_title('Total Mechanical Energy vs. Time')
+    ax[1, 1].set_ylabel('Total Energy (J)')
+    ax[1, 1].set_title('Total Energy vs. Time')
     ax[1, 1].grid(True)
     
     # Adjust layout and show plots
     plt.tight_layout()
     plt.show()
 
-def plot_pendulum_motion_with_ground_truth(results, ground_truth, V_gt, T_gt, E_gt, V_results, T_results, E_results):
+def plot_pendulum_motion_with_ground_truth(results, ground_truth_results, V_gt, T_gt, E_gt, V_results, T_results, E_results):
     """
     Plots the angular position, potential energy, kinetic energy, 
     and total energy of a pendulum over time.
@@ -76,7 +78,7 @@ def plot_pendulum_motion_with_ground_truth(results, ground_truth, V_gt, T_gt, E_
     
     # Plot angular position vs time
     ax[0, 0].plot(times, angular_positions, color='b', label='Calculated')
-    gt_times, gt_positions = zip(*ground_truth)
+    gt_times, gt_positions = zip(*ground_truth_results)
     ax[0, 0].plot(gt_times, gt_positions, color='b', linestyle='--', label='Ground Truth')
     ax[0, 0].set_xlabel('Time')
     ax[0, 0].set_ylabel('Angular Position (rad)')
@@ -112,8 +114,8 @@ def plot_pendulum_motion_with_ground_truth(results, ground_truth, V_gt, T_gt, E_
     _, E_gt_vals = zip(*E_gt)
     ax[1, 1].plot(gt_times, E_gt_vals, color='purple', linestyle='--', label='Ground Truth')
     ax[1, 1].set_xlabel('Time')
-    ax[1, 1].set_ylabel('Total Mechanical Energy (J)')
-    ax[1, 1].set_title('Total Mechanical Energy vs. Time')
+    ax[1, 1].set_ylabel('Total Energy (J)')
+    ax[1, 1].set_title('Total Energy vs. Time')
     ax[1, 1].legend()
     ax[1, 1].grid(True)
     
@@ -126,6 +128,9 @@ acceleration = (0, 9.80665)
 
 def linearized_ground_truth(t, w0, angle0):
     return angle0 * math.cos(w0 * t)
+
+def linearized_ground_truth_derivative(t, w0, angle0):
+    return -angle0 * w0 * math.sin( w0 * t)
 
 def penislum_dynamic(angle_second_dertivative, w0, angle, t): # w0 sqrt(g/l), no cambia a lo largo de las iteraciones
     return angle_second_dertivative(t) + w0**2 * math.sin(angle(t))
@@ -147,19 +152,19 @@ def penislum_linealized_dynamic(angle_second_dertivative, w0, angle, t): # w0 sq
     
 #     return result_list
 
-def ground_truth_iteration(initial_state, w0, t0, tn, iterations=2000):
+def ground_truth_iteration(initial_state, w0, t0, tn, iterations=ITER):
     ret = []
     h = (tn - t0) / iterations
     angle0 = initial_state[0]
 
     for i in range(iterations):
-        ret.append(t0, angle0)
+        ret.append((t0, angle0))
         t0 += h
         angle0 = linearized_ground_truth(t0, w0, initial_state[0])
     
     return ret
 
-def euler_method_teta(initial_state, w0, t0, tn, iterations=2000):
+def euler_method_teta(initial_state, w0, t0, tn, iterations=ITER):
     
     # Initialize arrays for results
     state = np.zeros((iterations, 2))
@@ -190,7 +195,7 @@ def getNextR4_two_dimensional(previous, f, h, w0):
     k4 = h * f(previous + k3, w0)
     return previous + (1/6) * (k1 + 2*k2 + 2*k3 + k4)
 
-def R4teta(initial_state, w0, t0, tn, iterations=2000):
+def R4teta(initial_state, w0, t0, tn, iterations=ITER):
     ret = []
     h = (tn - t0) / iterations
     current_state = initial_state
@@ -202,10 +207,8 @@ def R4teta(initial_state, w0, t0, tn, iterations=2000):
         
     return ret #devuelve t, angulo aproximado (se aproxima en base a su derivada, cosa que devuelve non linear f), u aproximado (seria como una aproximacion de la deivada del angulo)
 
-
 def w0(l):
     return (acceleration[1]/l)**(1/2)
-
 
 # V y T
 def V_on_point(t, m, l):
@@ -225,13 +228,22 @@ def T(results, mass, length):
 def E(V_results, T_results):
     return [(V_res[0], V_res[1] + T_res[1]) for V_res, T_res in zip(V_results, T_results)]
 
-def T_for_gt(results, mass, length)
+def T_for_gt(initial_state, w0, t0 , tn, mass, length, iterations = ITER):
+
+    tuploide = []
+    h = (tn - t0) / iterations
+
+    for i in range(iterations):
+        tuploide.append((t0, 1/2 * mass * (length ** 2) * (linearized_ground_truth_derivative(t0, w0, initial_state[0])**2)))
+        t0  += h
+
+    return tuploide
 
 
 # V y T
 
 def main():
-    initial_state = np.array((0, 0.5)) #tita, u (u es la derivada de tita)
+    initial_state = np.array((0.5, 0)) #tita, u (u es la derivada de tita)
     l = 10
     w_0 = w0(l)
     t0 = 0
@@ -241,14 +253,25 @@ def main():
     eulerTeta = euler_method_teta(initial_state, w_0, t0 , tn) # (t, tita, u)
     R4T = R4teta(initial_state, w_0, t0, tn)
     groundTruth = ground_truth_iteration(initial_state, w_0, t0, tn)
-    V_results_euler = V(eulerTeta, mass, l)
+
+    V_result_euler = V(eulerTeta, mass, l)
     V_result_R4 = V(R4T, mass, l)
     V_result_gt = V(groundTruth, mass, l)
+
     T_result_euler = T(eulerTeta, mass, l)
     T_result_R4 = T(R4T, mass, l)
-    T_result_gt = 
-    E_result_euler = E(V_results_euler, T_result_euler)
+    T_result_gt = T_for_gt(initial_state, w_0, t0, tn, mass, l)
+
+    E_result_euler = E(V_result_euler, T_result_euler)
     E_result_R4 = E(V_result_R4, T_result_R4)
+    E_result_gt = E(V_result_gt, T_result_gt)
+
+
+    plot_pendulum_motion(R4T, V_result_R4, T_result_R4, E_result_R4)
+    plot_pendulum_motion_with_ground_truth(R4T, groundTruth, V_result_gt, T_result_gt, E_result_gt, V_result_R4, T_result_R4, E_result_R4)
+
+    plot_pendulum_motion(eulerTeta, V_result_euler, T_result_euler, E_result_euler)
+    plot_pendulum_motion_with_ground_truth(eulerTeta, groundTruth, V_result_gt, T_result_gt, E_result_gt, V_result_euler, T_result_euler, E_result_euler)
 
 #    plot_pendulum_motion(eulerTeta, V_results_euler, T_result_euler, E_result_euler)
 #    plot_pendulum_motion(R4T, V_result_R4, T_result_R4, E_result_R4)
