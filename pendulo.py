@@ -56,7 +56,76 @@ def plot_pendulum_motion(results, V_results, T_results, E_results):
     plt.tight_layout()
     plt.show()
 
+def plot_pendulum_motion_with_ground_truth(results, ground_truth, V_gt, T_gt, E_gt, V_results, T_results, E_results):
+    """
+    Plots the angular position, potential energy, kinetic energy, 
+    and total energy of a pendulum over time.
+    
+    Parameters:
+        results (list of tuples): Output from eulerMethod/R4teta, containing time, angular position,
+                                  and angular velocity at each time point.
+        ground_truth (list of tuples): Time and true angular position.
+        V_gt, T_gt, E_gt (list of tuples): Time and true values for potential, kinetic, and total energy.
+        V_results, T_results, E_results (list of tuples): Containing time and respective energies.
+    """
+    # Extracting time and angular position
+    times, angular_positions, _ = zip(*results)
+    
+    # Create subplots
+    fig, ax = plt.subplots(2, 2, figsize=(14, 10))
+    
+    # Plot angular position vs time
+    ax[0, 0].plot(times, angular_positions, color='b', label='Calculated')
+    gt_times, gt_positions = zip(*ground_truth)
+    ax[0, 0].plot(gt_times, gt_positions, color='b', linestyle='--', label='Ground Truth')
+    ax[0, 0].set_xlabel('Time')
+    ax[0, 0].set_ylabel('Angular Position (rad)')
+    ax[0, 0].set_title('Angular Position vs. Time')
+    ax[0, 0].legend()
+    ax[0, 0].grid(True)
+
+    # Plot potential energy vs time
+    _, V_vals = zip(*V_results)
+    ax[0, 1].plot(times, V_vals, color='g', label='Calculated')
+    _, V_gt_vals = zip(*V_gt)
+    ax[0, 1].plot(gt_times, V_gt_vals, color='g', linestyle='--', label='Ground Truth')
+    ax[0, 1].set_xlabel('Time')
+    ax[0, 1].set_ylabel('Potential Energy (J)')
+    ax[0, 1].set_title('Potential Energy vs. Time')
+    ax[0, 1].legend()
+    ax[0, 1].grid(True)
+
+    # Plot kinetic energy vs time
+    _, T_vals = zip(*T_results)
+    ax[1, 0].plot(times, T_vals, color='r', label='Calculated')
+    _, T_gt_vals = zip(*T_gt)
+    ax[1, 0].plot(gt_times, T_gt_vals, color='r', linestyle='--', label='Ground Truth')
+    ax[1, 0].set_xlabel('Time')
+    ax[1, 0].set_ylabel('Kinetic Energy (J)')
+    ax[1, 0].set_title('Kinetic Energy vs. Time')
+    ax[1, 0].legend()
+    ax[1, 0].grid(True)
+
+    # Plot total mechanical energy vs time
+    _, E_vals = zip(*E_results)
+    ax[1, 1].plot(times, E_vals, color='purple', label='Calculated')
+    _, E_gt_vals = zip(*E_gt)
+    ax[1, 1].plot(gt_times, E_gt_vals, color='purple', linestyle='--', label='Ground Truth')
+    ax[1, 1].set_xlabel('Time')
+    ax[1, 1].set_ylabel('Total Mechanical Energy (J)')
+    ax[1, 1].set_title('Total Mechanical Energy vs. Time')
+    ax[1, 1].legend()
+    ax[1, 1].grid(True)
+    
+    # Adjust layout and show plots
+    plt.tight_layout()
+    plt.show()
+
+
 acceleration = (0, 9.80665)
+
+def linearized_ground_truth(t, w0, angle0):
+    return angle0 * math.cos(w0 * t)
 
 def penislum_dynamic(angle_second_dertivative, w0, angle, t): # w0 sqrt(g/l), no cambia a lo largo de las iteraciones
     return angle_second_dertivative(t) + w0**2 * math.sin(angle(t))
@@ -64,17 +133,6 @@ def penislum_dynamic(angle_second_dertivative, w0, angle, t): # w0 sqrt(g/l), no
 def penislum_linealized_dynamic(angle_second_dertivative, w0, angle, t): # w0 sqrt(g/l), no cambia a lo largo de las iteraciones
     return angle_second_dertivative(t) + w0**2 * angle(t)
 
-def E(angle, T, V, t):
-    return T(angle(t)) + V(angle(t))
-
-def T(m, l, angle_derivative, t):
-    return (1/2) * m * (l ** 2) * (angle_derivative(t) ** 2)
-
-def V(m, l, angle, t):
-    return m*acceleration*l*math.cos(angle(t)) + m * acceleration * l
-
-def first_order_dynamic(u, angle, w0):
-    return (u, (-1) * w0**2 * angle)
 
 # def euler_method_linealized(u0, angle0, w0, t0, tn, iterations = 20000):
 #     result_list = []
@@ -89,6 +147,17 @@ def first_order_dynamic(u, angle, w0):
     
 #     return result_list
 
+def ground_truth_iteration(initial_state, w0, t0, tn, iterations=2000):
+    ret = []
+    h = (tn - t0) / iterations
+    angle0 = initial_state[0]
+
+    for i in range(iterations):
+        ret.append(t0, angle0)
+        t0 += h
+        angle0 = linearized_ground_truth(t0, w0, initial_state[0])
+    
+    return ret
 
 def euler_method_teta(initial_state, w0, t0, tn, iterations=2000):
     
@@ -169,14 +238,18 @@ def main():
     # plot_pendulum_motion(euler_method_linealized(5, math.radians(300), w0(10),0 , 20))
     eulerTeta = euler_method_teta(initial_state, w_0, t0 , tn) # (t, tita, u)
     R4T = R4teta(initial_state, w_0, t0, tn)
+    groundTruth = ground_truth_iteration(initial_state, w_0, t0, tn)
     V_results_euler = V(eulerTeta, mass, l)
     V_result_R4 = V(R4T, mass, l)
+    V_result_gt = V(groundTruth, mass, l)
     T_result_euler = T(eulerTeta, mass, l)
     T_result_R4 = T(R4T, mass, l)
+    T_result_gt = 
     E_result_euler = E(V_results_euler, T_result_euler)
     E_result_R4 = E(V_result_R4, T_result_R4)
-    plot_pendulum_motion(eulerTeta, V_results_euler, T_result_euler, E_result_euler)
-    plot_pendulum_motion(R4T, V_result_R4, T_result_R4, E_result_R4)
+
+#    plot_pendulum_motion(eulerTeta, V_results_euler, T_result_euler, E_result_euler)
+#    plot_pendulum_motion(R4T, V_result_R4, T_result_R4, E_result_R4)
 
 if __name__ == "__main__":
     main()
