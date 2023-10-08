@@ -38,13 +38,6 @@ def R4(w0, f, t0, tn , iterations = int(1e6)):
         ret.append((t0, curr_it))
     return ret
 
-# def eulerMethod(w0, f, h = 1e-6, iterations = int(1e6)):
-#     result_list = []
-#     for i in range(iterations):
-#         result_list.append(w0)
-#         w0 = w0 + h * f(w0)
-    
-#     return result_list
 
 def eulerMethod(w0, f, t0, tn, iterations = 20000):
     result_list = []

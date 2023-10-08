@@ -1,38 +1,56 @@
 import math
 import numpy as np
+import matplotlib.pyplot as plt
 
 def r(angle, l, t):
     return (l * math.sin(angle(t)), -l * math.cos(angle(t)))
 
-import matplotlib.pyplot as plt
-
-def plot_pendulum_motion(results):
+def plot_pendulum_motion(results, V_results, T_results, E_results):
     """
-    Plots the angular position and angular velocity of a pendulum over time.
+    Plots the angular position, potential energy, kinetic energy, 
+    and total energy of a pendulum over time.
     
     Parameters:
-        results (list of tuples): Output from eulerMethod, containing time, angular velocity, 
-                                  and angular position at each time point.
+        results (list of tuples): Output from eulerMethod/R4teta, containing time, angular position,
+                                  and angular velocity at each time point.
+        V_results, T_results, E_results (list of tuples): Containing time and respective energies.
     """
-    # Extracting time, angular velocity, and angular position
-    times, angular_velocities, angular_positions = zip(*results)
+    # Extracting time and angular position
+    times, angular_positions, _ = zip(*results)
     
     # Create subplots
-    fig, ax = plt.subplots(2, 1, figsize=(10, 8))
+    fig, ax = plt.subplots(2, 2, figsize=(14, 10))
     
     # Plot angular position vs time
-    ax[0].plot(times, angular_positions, color='b')
-    ax[0].set_xlabel('Time')
-    ax[0].set_ylabel('Angular Position (rad)')
-    ax[0].set_title('Angular Position vs. Time')
-    ax[0].grid(True)
+    ax[0, 0].plot(times, angular_positions, color='b')
+    ax[0, 0].set_xlabel('Time')
+    ax[0, 0].set_ylabel('Angular Position (rad)')
+    ax[0, 0].set_title('Angular Position vs. Time')
+    ax[0, 0].grid(True)
 
-    # Plot angular velocity vs time
-    ax[1].plot(times, angular_velocities, color='r')
-    ax[1].set_xlabel('Time')
-    ax[1].set_ylabel('Angular Velocity (rad/s)')
-    ax[1].set_title('Angular Velocity vs. Time')
-    ax[1].grid(True)
+    # Plot potential energy vs time
+    _, V_vals = zip(*V_results)
+    ax[0, 1].plot(times, V_vals, color='g')
+    ax[0, 1].set_xlabel('Time')
+    ax[0, 1].set_ylabel('Potential Energy (J)')
+    ax[0, 1].set_title('Potential Energy vs. Time')
+    ax[0, 1].grid(True)
+
+    # Plot kinetic energy vs time
+    _, T_vals = zip(*T_results)
+    ax[1, 0].plot(times, T_vals, color='r')
+    ax[1, 0].set_xlabel('Time')
+    ax[1, 0].set_ylabel('Kinetic Energy (J)')
+    ax[1, 0].set_title('Kinetic Energy vs. Time')
+    ax[1, 0].grid(True)
+
+    # Plot total mechanical energy vs time
+    _, E_vals = zip(*E_results)
+    ax[1, 1].plot(times, E_vals, color='purple')
+    ax[1, 1].set_xlabel('Time')
+    ax[1, 1].set_ylabel('Total Mechanical Energy (J)')
+    ax[1, 1].set_title('Total Mechanical Energy vs. Time')
+    ax[1, 1].grid(True)
     
     # Adjust layout and show plots
     plt.tight_layout()
@@ -71,52 +89,94 @@ def first_order_dynamic(u, angle, w0):
     
 #     return result_list
 
-def non_linear_fu(u):
-    return u
 
-def non_linear_fangle(angle, w0):
-    return -(w0**2)*math.sin(angle)
-
-def euler_method(u0, angle0, w0, t0, tn, iterations = 2000):
-    result_list = []
-    h = (tn - t0)/iterations
-    for i in range(iterations):
-        result_list.append((t0, u0, angle0))
-        new_angle = angle0 + h * u0
-        new_u = u0 + h * (-1)* (w0**2) * np.sin(angle0)
-        u0 = new_u
-        angle0 = new_angle
-        t0 += h
+def euler_method_teta(initial_state, w0, t0, tn, iterations=2000):
     
-    return result_list
-
-def getNextR4_two_dimensional(previous1, previous2, f1, f2, h, w0):
-    k1_1 = h * f1(previous1)
-    k2_1 = h * f1(previous1 + (1/2) * k1_1)
-    k3_1 = h * f1(previous1 + (1/2) * k2_1)
-    k4_1 = h * f1(previous1 + k3_1)
-    k1_2 = h * f2(previous2, w0)
-    k2_2 = h * f2(previous2 + (1/2) * k1_2, w0)
-    k3_2 = h * f2(previous2 + (1/2) * k2_2, w0)
-    k4_2 = h * f2(previous2 + k3_2, w0)
-    return (previous1 + (1/6) * (k1_1 + 2*k2_1 + 2*k3_1 + k4_1), previous2 + (1/6)* (k1_2 + 2*k2_2 + 2*k3_2 + k4_2))
-
-def R4(u0, angle0, w0, t0, tn, iterations = 2000):
-    ret = []
+    # Initialize arrays for results
+    state = np.zeros((iterations, 2))
+    t = np.linspace(t0, tn, iterations)
+    
+    # Set initial conditions
+    state[0] = initial_state
+    
+    # Compute step size
     h = (tn - t0)/iterations
-    for iter in range(iterations):
-        ret.append((t0, u0, angle0))
-        u0, angle0 = getNextR4_two_dimensional(u0, angle0, non_linear_fu, non_linear_fangle, h, w0)
+    
+    # Euler method using vectorized operations
+    for i in range(1, iterations):
+        state[i] = state[i-1] + h * non_linear_f(state[i-1], w0)
+    
+    # Return results as a list of tuples
+    return list(zip(t, state[:, 0], state[:, 1])) #devuelve t, angulo aproximado (se aproxima en base a su derivada, cosa que devuelve non linear f), u aproximado (seria como una aproximacion de la deivada del angulo)
+
+
+def non_linear_f(state, w0):
+    angle, u = state #angle es tita, u es la derivada de tita
+    return np.array([u, -(w0**2)*math.sin(angle)]) #derivada del angulo, derivada de u (derivada segunda del angulo)
+
+def getNextR4_two_dimensional(previous, f, h, w0):
+    k1 = h * f(previous, w0)
+    k2 = h * f(previous + 0.5 * k1, w0)
+    k3 = h * f(previous + 0.5 * k2, w0)
+    k4 = h * f(previous + k3, w0)
+    return previous + (1/6) * (k1 + 2*k2 + 2*k3 + k4)
+
+def R4teta(initial_state, w0, t0, tn, iterations=2000):
+    ret = []
+    h = (tn - t0) / iterations
+    current_state = initial_state
+    
+    for _ in range(iterations):
+        ret.append((t0, *current_state))
+        current_state = getNextR4_two_dimensional(current_state, non_linear_f, h, w0)
         t0 += h
-    return ret
+        
+    return ret #devuelve t, angulo aproximado (se aproxima en base a su derivada, cosa que devuelve non linear f), u aproximado (seria como una aproximacion de la deivada del angulo)
+
 
 def w0(l):
     return (acceleration[1]/l)**(1/2)
 
+
+# V y T
+def V_on_point(t, m, l):
+    return -m * acceleration[1] * l * math.cos(t) + m * acceleration[1] + l
+
+def V(results, mass, length):
+    #−mgℓ cos θ + mgℓ.
+    return [(x[0], V_on_point(x[1], mass, length)) for x in results]
+
+def T(results, mass, length):
+    #1/2 * m * ℓ^2 * (θ')^2
+    tuploide = []
+    for res in results:
+        tuploide.append((res[0], 1/2 * mass * (length ** 2) * (res[2]**2)))
+    return tuploide
+
+def E(V_results, T_results):
+    return [(V_res[0], V_res[1] + T_res[1]) for V_res, T_res in zip(V_results, T_results)]
+
+
+# V y T
+
 def main():
+    initial_state = np.array((0, 0.5)) #tita, u (u es la derivada de tita)
+    l = 10
+    w_0 = w0(l)
+    t0 = 0
+    tn = 20
+    mass = 1
     # plot_pendulum_motion(euler_method_linealized(5, math.radians(300), w0(10),0 , 20))
-    plot_pendulum_motion(euler_method(0, 0.5, w0(10),0 , 20))
-    plot_pendulum_motion(R4(0, 5, w0(10),0 , 20))
+    eulerTeta = euler_method_teta(initial_state, w_0, t0 , tn) # (t, tita, u)
+    R4T = R4teta(initial_state, w_0, t0, tn)
+    V_results_euler = V(eulerTeta, mass, l)
+    V_result_R4 = V(R4T, mass, l)
+    T_result_euler = T(eulerTeta, mass, l)
+    T_result_R4 = T(R4T, mass, l)
+    E_result_euler = E(V_results_euler, T_result_euler)
+    E_result_R4 = E(V_result_R4, T_result_R4)
+    plot_pendulum_motion(eulerTeta, V_results_euler, T_result_euler, E_result_euler)
+    plot_pendulum_motion(R4T, V_result_R4, T_result_R4, E_result_R4)
 
 if __name__ == "__main__":
     main()
