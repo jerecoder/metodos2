@@ -232,6 +232,35 @@ def R4teta(initial_state, w0, t0, tn, iterations=ITER):
 def w0(l):
     return (acceleration[1]/l)**(1/2)
 
+# V y T
+def V_on_point(t, m, l):
+    return -m * acceleration[1] * l * math.cos(t) + m * acceleration[1] + l
+
+def V(results, mass, length):
+    #−mgℓ cos θ + mgℓ.
+    return [(x[0], V_on_point(x[1], mass, length)) for x in results]
+
+def T(results, mass, length):
+    #1/2 * m * ℓ^2 * (θ')^2
+    tuploide = []
+    for res in results:
+        tuploide.append((res[0], 1/2 * mass * (length ** 2) * (res[2]**2)))
+    return tuploide
+
+def E(V_results, T_results):
+    return [(V_res[0], V_res[1] + T_res[1]) for V_res, T_res in zip(V_results, T_results)]
+
+def T_for_gt(initial_state, w0, t0 , tn, mass, length, iterations = ITER):
+
+    tuploide = []
+    h = (tn - t0) / iterations
+
+    for i in range(iterations):
+        tuploide.append((t0, 1/2 * mass * (length ** 2) * (linearized_ground_truth_derivative(t0, w0, initial_state[0])**2)))
+        t0  += h
+
+    return tuploide
+
 def max_error_calc(result1, result2):
     listoid = []
     for i in range(len(result1) - 1):
@@ -252,17 +281,27 @@ def max_error_tetha_iteration(length):
         tn = 20
         mass = 1
         # plot_pendulum_motion(euler_method_linealized(5, math.radians(300), w0(10),0 , 20))
+
         R4T = R4teta(initial_state, w_0, t0, tn)
         groundTruth = ground_truth_iteration(initial_state, w_0, t0, tn)
 
-        error_list.append((i, max_error_calc(R4T, groundTruth)))
+        V_result_R4 = V(R4T, mass, l)
+        V_result_gt = V(groundTruth, mass, l)
+
+        T_result_R4 = T(R4T, mass, l)
+        T_result_gt = T_for_gt(initial_state, w_0, t0, tn, mass, l)
+
+        E_result_R4 = E(V_result_R4, T_result_R4)
+        E_result_gt = E(V_result_gt, T_result_gt)
+
+        error_list.append((i, max_error_calc(E_result_R4, E_result_gt)))
     
     return error_list
 
 
 def main():
 
-    error = max_error_tetha_iteration([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.75, 0.9, 1, 2, 3, 4, 5, 10, 20, 30])
+    error = max_error_tetha_iteration([0, 0.6, 1.3, 2, 2.97, 3.41, 4.18, 4.88, 5.57, 6.28])
 
     plot_max_error(error)
 
