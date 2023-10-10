@@ -124,6 +124,27 @@ def plot_pendulum_motion_with_ground_truth(results, ground_truth_results, V_gt, 
     plt.tight_layout()
     plt.show()
 
+import matplotlib.pyplot as plt
+
+def plot_max_error(error_list):
+    """
+    Plots the error_list points as a continuous line.
+
+    Parameters:
+        error_list (list): A list of tuples containing pairs (i, error)
+                           where `i` is an integer and `error` is a float.
+    """
+    # Unzip the error_list into two lists: `i_values` and `errors`.
+    i_values, errors = zip(*error_list)
+    
+    # Plotting
+    plt.plot(i_values, errors, label='Max Error', linestyle='-')
+    plt.title('Max Error per Iteration')
+    plt.xlabel('Iteration (i)')
+    plt.ylabel('Max Error')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
 
 acceleration = (0, 9.80665)
 
@@ -211,71 +232,54 @@ def R4teta(initial_state, w0, t0, tn, iterations=ITER):
 def w0(l):
     return (acceleration[1]/l)**(1/2)
 
-# V y T
-def V_on_point(t, m, l):
-    return -m * acceleration[1] * l * math.cos(t) + m * acceleration[1] + l
+def max_error_calc(result1, result2):
+    listoid = []
+    for i in range(len(result1) - 1):
+        listoid.append(abs(result1[i][1] - result2[i][1]))
+    
+    return max(listoid)
 
-def V(results, mass, length):
-    #−mgℓ cos θ + mgℓ.
-    return [(x[0], V_on_point(x[1], mass, length)) for x in results]
+def max_error_tetha_iteration(length):
 
-def T(results, mass, length):
-    #1/2 * m * ℓ^2 * (θ')^2
-    tuploide = []
-    for res in results:
-        tuploide.append((res[0], 1/2 * mass * (length ** 2) * (res[2]**2)))
-    return tuploide
+    error_list = []
 
-def E(V_results, T_results):
-    return [(V_res[0], V_res[1] + T_res[1]) for V_res, T_res in zip(V_results, T_results)]
+    for i in length:
 
-def T_for_gt(initial_state, w0, t0 , tn, mass, length, iterations = ITER):
+        initial_state = np.array((i, 0)) #tita, u (u es la derivada de tita)
+        l = 10
+        w_0 = w0(l)
+        t0 = 0
+        tn = 20
+        mass = 1
+        # plot_pendulum_motion(euler_method_linealized(5, math.radians(300), w0(10),0 , 20))
+        R4T = R4teta(initial_state, w_0, t0, tn)
+        groundTruth = ground_truth_iteration(initial_state, w_0, t0, tn)
 
-    tuploide = []
-    h = (tn - t0) / iterations
+        error_list.append((i, max_error_calc(R4T, groundTruth)))
+    
+    return error_list
 
-    for i in range(iterations):
-        tuploide.append((t0, 1/2 * mass * (length ** 2) * (linearized_ground_truth_derivative(t0, w0, initial_state[0])**2)))
-        t0  += h
-
-    return tuploide
-
-
-# V y T
 
 def main():
 
-    initial_state = np.array((0.5, 0)) #tita, u (u es la derivada de tita)
-    l = 10
-    w_0 = w0(l)
-    t0 = 0
-    tn = 50
-    mass = 1
-    # plot_pendulum_motion(euler_method_linealized(5, math.radians(300), w0(10),0 , 20))
-    eulerTeta = euler_method_teta(initial_state, w_0, t0 , tn) # (t, tita, u)
-    R4T = R4teta(initial_state, w_0, t0, tn)
-    groundTruth = ground_truth_iteration(initial_state, w_0, t0, tn)
+    error = max_error_tetha_iteration([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.75, 0.9, 1, 2, 3, 4, 5, 10, 20, 30])
 
-    V_result_euler = V(eulerTeta, mass, l)
-    V_result_R4 = V(R4T, mass, l)
-    V_result_gt = V(groundTruth, mass, l)
+    plot_max_error(error)
 
-    T_result_euler = T(eulerTeta, mass, l)
-    T_result_R4 = T(R4T, mass, l)
-    T_result_gt = T_for_gt(initial_state, w_0, t0, tn, mass, l)
 
-    E_result_euler = E(V_result_euler, T_result_euler)
-    E_result_R4 = E(V_result_R4, T_result_R4)
-    E_result_gt = E(V_result_gt, T_result_gt)
-
+    
+    # initial_state = np.array((0.5, 0)) #tita, u (u es la derivada de tita)
+    # l = 10
+    # w_0 = w0(l)
+    # t0 = 0
+    # tn = 20
+    # mass = 1
+    # # plot_pendulum_motion(euler_method_linealized(5, math.radians(300), w0(10),0 , 20))
+    # eulerTeta = euler_method_teta(initial_state, w_0, t0 , tn) # (t, tita, u)
+    # R4T = R4teta(initial_state, w_0, t0, tn)
+    # groundTruth = ground_truth_iteration(initial_state, w_0, t0, tn)
 
     # plot_pendulum_motion(groundTruth, V_result_gt, T_result_gt, E_result_gt)
-
-    plot_pendulum_motion(R4T, V_result_R4, T_result_R4, E_result_R4)
-    plot_pendulum_motion_with_ground_truth(R4T, groundTruth, V_result_gt, T_result_gt, E_result_gt, V_result_R4, T_result_R4, E_result_R4)
-
-    plot_pendulum_motion(eulerTeta, V_result_euler, T_result_euler, E_result_euler)
-    plot_pendulum_motion_with_ground_truth(eulerTeta, groundTruth, V_result_gt, T_result_gt, E_result_gt, V_result_euler, T_result_euler, E_result_euler)
 
 if __name__ == "__main__":
     main()
